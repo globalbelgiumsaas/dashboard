@@ -2151,9 +2151,9 @@ loadProfileData('GT');
 if (allData.length) { updateBadge(); computeKPIs(); renderInventory(); }
 updateGSStatus();
 startAutoSync();
-// Auto-sync on load if sheet is configured and no local data yet
-if (!allData.length && getSheetUrl('GT')) syncCurrentProfile();
-showPage('overview');
+// Sync à chaque chargement si sheet configuré (assure données fraîches)
+if (getSheetUrl('GT')) syncCurrentProfile();
+else showPage('overview');
 </script>
 </body>
 </html>
