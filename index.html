@@ -1279,10 +1279,12 @@ async function syncCurrentProfile() {
   try {
     // gviz/tq works with "Anyone with the link" — no publish to web needed
     const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
-    // Try two CORS proxies in sequence
+    // Try multiple CORS proxies in sequence
     const proxies = [
-      `https://corsproxy.io/?${encodeURIComponent(csvUrl)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(csvUrl)}`
+      `https://cors.eu.org/${csvUrl}`,
+      `https://corsproxy.io/?url=${encodeURIComponent(csvUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(csvUrl)}`,
+      `https://thingproxy.freeboard.io/fetch/${csvUrl}`
     ];
     let csv = null;
     for (const p of proxies) {
