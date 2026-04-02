@@ -1,0 +1,2157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard — Bag Resale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --purple: #5c8df5;
+    --purple-light: rgba(92,141,245,.15);
+    --purple-dark: #3a6de0;
+    --sidebar-bg: #0d1117;
+    --sidebar-text: #8b9ab8;
+    --sidebar-active: #5c8df5;
+    --bg: #16161f;
+    --card: #1e1e2a;
+    --border: #2a2a38;
+    --text: #e8e8f0;
+    --muted: #6b6b85;
+    --green: #34d399;
+    --green-bg: rgba(52,211,153,.12);
+    --red: #f87171;
+    --red-bg: rgba(248,113,113,.12);
+    --shadow: 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px;
+    min-width: 220px;
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding-bottom: 24px;
+    border-right: 1px solid rgba(92,141,245,.12);
+  }
+
+  .sidebar-logo {
+    padding: 20px 16px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(92,141,245,.18);
+    margin-bottom: 8px;
+  }
+
+  .sidebar-logo-icon {
+    width: 32px; height: 32px;
+    background: var(--purple);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  .sidebar-logo-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.2;
+  }
+  .sidebar-logo-sub { font-size: 11px; color: var(--sidebar-text); font-weight: 400; }
+
+  .nav-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: rgba(200,200,216,.4);
+    padding: 16px 16px 6px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px;
+    color: var(--sidebar-text);
+    font-size: 13.5px;
+    cursor: pointer;
+    border-radius: 6px;
+    margin: 1px 8px;
+    transition: background .15s, color .15s;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+  .nav-item.active { background: rgba(92,141,245,.18); color: #fff; font-weight: 500; border-left: 3px solid var(--purple); padding-left: 13px; }
+  .nav-item.active .nav-icon { color: var(--purple); }
+
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; opacity: .75; }
+  .nav-item.active .nav-icon { opacity: 1; }
+
+  .nav-badge {
+    margin-left: auto;
+    background: rgba(255,255,255,.12);
+    color: var(--sidebar-text);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 10px;
+  }
+
+  /* ── MAIN ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    background: var(--card);
+    border-bottom: 2px solid rgba(92,141,245,.3);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+
+  .topbar-title { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -.2px; }
+
+  .topbar-actions { display: flex; align-items: center; gap: 10px; }
+
+  .btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 6px; font-size: 13px;
+    font-weight: 500; cursor: pointer; transition: all .15s;
+    border: 1px solid var(--border); background: var(--card);
+    color: var(--text);
+  }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--purple); color: #fff; border-color: var(--purple); }
+  .btn-primary:hover { background: var(--purple-dark); border-color: var(--purple-dark); }
+
+  .period-selector {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--muted); font-size: 13px;
+  }
+  .period-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--card); cursor: pointer;
+    font-size: 13px; font-weight: 500; color: var(--text);
+  }
+  .period-btn:hover { background: var(--bg); }
+
+  /* ── CONTENT ── */
+  .content { padding: 24px 28px; flex: 1; }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+  }
+  .filter-label { font-size: 13px; color: var(--muted); }
+  select.filter-select {
+    padding: 6px 10px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 13px; background: var(--card);
+    color: var(--text); cursor: pointer;
+  }
+
+  /* ── KPI GRID ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 2px solid rgba(92,141,245,.4);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: var(--shadow), 0 0 0 0 transparent;
+    transition: box-shadow .2s;
+  }
+  .kpi-card:hover {
+    box-shadow: var(--shadow), 0 4px 20px rgba(92,141,245,.12);
+  }
+
+  .kpi-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 12px;
+  }
+
+  .kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .kpi-link { font-size: 12px; color: var(--purple); text-decoration: none; cursor: pointer; }
+  .kpi-link:hover { text-decoration: underline; }
+
+  .kpi-value { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .kpi-value span { font-size: 16px; }
+
+  .kpi-change {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 12px; font-weight: 600; padding: 2px 7px;
+    border-radius: 12px;
+  }
+  .kpi-change.up { color: var(--green); background: var(--green-bg); }
+  .kpi-change.down { color: var(--red); background: var(--red-bg); }
+  .kpi-change.neutral { color: var(--muted); background: var(--bg); }
+
+  .kpi-sub {
+    font-size: 12px; color: var(--muted); margin-top: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 12px; border-top: 1px solid var(--border);
+  }
+
+  /* ── CHARTS GRID ── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 2px solid rgba(92,141,245,.25);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+
+  .chart-card.full { grid-column: span 2; }
+
+  .chart-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 16px;
+  }
+
+  .chart-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted);
+  }
+
+  .chart-legend {
+    display: flex; gap: 12px; margin-top: 4px;
+    font-size: 11px; color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    display: inline-block; margin-right: 4px;
+  }
+
+  canvas { max-width: 100%; }
+
+  /* ── TABLE ── */
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 2px solid rgba(92,141,245,.25);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+
+  .table-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .table-title { font-size: 15px; font-weight: 600; }
+  .table-count { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .table-search {
+    padding: 7px 12px; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 13px; width: 220px;
+    background: var(--bg);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    padding: 10px 16px; text-align: left;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--muted);
+    border-bottom: 1px solid rgba(92,141,245,.2);
+    background: rgba(92,141,245,.04);
+    cursor: pointer; user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(92,141,245,.05); }
+  tbody td { padding: 11px 16px; color: var(--text); }
+
+  .badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 9px; border-radius: 10px; font-size: 11px; font-weight: 600;
+  }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .badge-purple { background: var(--purple-light); color: var(--purple-dark); }
+  .badge-orange { background: #fff4e0; color: #b85c00; }
+  .badge-gray { background: rgba(255,255,255,.08); color: var(--muted); }
+
+  /* ── IMPORT ZONE ── */
+  .import-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 32px;
+    text-align: center;
+    background: var(--card);
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    margin-bottom: 24px;
+  }
+  .import-zone:hover, .import-zone.dragover {
+    border-color: var(--purple);
+    background: var(--purple-light);
+  }
+  .import-zone-icon { font-size: 32px; margin-bottom: 10px; }
+  .import-zone-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .import-zone-sub { font-size: 13px; color: var(--muted); }
+  #file-input { display: none; }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center; padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+  .empty-state-sub { font-size: 13px; }
+
+  /* ── PAGE VIEWS ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── ANALYTICS ── */
+  .analytics-filters {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .analytics-filter-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  .analytics-pill {
+    padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+    border: 1px solid var(--border); background: var(--card);
+    color: var(--muted); cursor: pointer; transition: all .15s;
+  }
+  .analytics-pill:hover { color: var(--text); border-color: var(--purple); }
+  .analytics-pill.active {
+    background: var(--purple); border-color: var(--purple);
+    color: #fff; font-weight: 600;
+  }
+
+  .analytics-select {
+    padding: 7px 12px; border: 1px solid var(--border); border-radius: 20px;
+    background: var(--card); color: var(--text); font-size: 13px; cursor: pointer;
+  }
+
+  .analytics-kpi-row {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px; margin-bottom: 16px;
+  }
+  .analytics-kpi-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 3px solid var(--purple);
+    border-radius: 14px; padding: 22px 24px;
+    box-shadow: var(--shadow);
+  }
+  .analytics-kpi-label {
+    font-size: 13px; color: var(--muted); font-weight: 500; margin-bottom: 10px;
+  }
+  .analytics-kpi-row-inner {
+    display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px;
+  }
+  .analytics-kpi-value {
+    font-size: 32px; font-weight: 700; color: var(--text); letter-spacing: -.5px;
+  }
+  .analytics-kpi-change {
+    font-size: 14px; font-weight: 600; color: var(--green);
+  }
+  .analytics-kpi-sub { font-size: 12px; color: var(--muted); }
+
+  @media (max-width: 900px) {
+    .analytics-kpi-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .analytics-kpi-value { font-size: 24px; }
+    .analytics-kpi-card { padding: 16px; }
+    .analytics-filters { gap: 8px; }
+    .analytics-pill { padding: 6px 10px; font-size: 12px; }
+  }
+
+  /* ── PRICING ── */
+  .pricing-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .pricing-form { display: flex; flex-direction: column; gap: 14px; }
+  .pricing-field { display: flex; flex-direction: column; gap: 6px; }
+  .pricing-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .pricing-input {
+    padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 14px; background: var(--bg);
+    color: var(--text); font-family: inherit; transition: border-color .15s;
+  }
+  .pricing-input:focus { outline: none; border-color: var(--purple); }
+  .pricing-btn { margin-top: 6px; padding: 11px; font-size: 14px; justify-content: center; }
+  .pricing-result-body { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+  .pricing-suggested { font-size: 48px; font-weight: 700; color: var(--purple); letter-spacing: -1px; }
+  .pricing-range { font-size: 13px; color: var(--muted); }
+  .pricing-confidence {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: var(--green);
+    background: var(--green-bg); padding: 4px 10px; border-radius: 10px; align-self: flex-start;
+  }
+  .pricing-stats {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    border-top: 1px solid var(--border); padding-top: 14px;
+  }
+  .pricing-stat-item { display: flex; flex-direction: column; gap: 3px; }
+  .pricing-stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .pricing-stat-value { font-size: 16px; font-weight: 600; color: var(--text); }
+  @media (max-width: 900px) {
+    .pricing-layout { grid-template-columns: 1fr; }
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(92,141,245,.35); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(92,141,245,.55); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--text); color: #fff;
+    padding: 12px 18px; border-radius: 8px; font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    transform: translateY(80px); opacity: 0;
+    transition: all .25s; z-index: 999;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ── HAMBURGER ── */
+  .hamburger {
+    display: none;
+    background: none; border: none; cursor: pointer;
+    padding: 6px; border-radius: 6px; color: var(--text);
+    font-size: 22px; line-height: 1; flex-shrink: 0;
+  }
+
+  /* ── OVERLAY ── */
+  .overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45); z-index: 99;
+  }
+  .overlay.show { display: block; }
+
+  /* ── BOTTOM NAV (disabled) ── */
+
+  /* ── SIDEBAR CLOSE ── */
+  .sidebar-close {
+    display: none;
+    background: rgba(255,255,255,.1); border: none; color: #fff;
+    border-radius: 6px; padding: 4px 8px; cursor: pointer;
+    font-size: 16px; line-height: 1; flex-shrink: 0;
+  }
+
+  @media (max-width: 900px) {
+    /* Sidebar → drawer */
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0;
+      z-index: 100;
+      transform: translateX(-100%);
+      transition: transform .25s ease;
+      width: 260px;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-close { display: flex; align-items: center; }
+
+    .hamburger { display: flex; align-items: center; justify-content: center; }
+
+    /* Topbar */
+    .topbar { padding: 11px 14px; gap: 8px; }
+    .topbar-title { font-size: 17px; }
+    .period-selector { display: none; }
+    .topbar-actions { gap: 8px; }
+    .btn-primary span { display: none; }
+
+    /* Content */
+    .content { padding: 14px; }
+
+    /* KPIs */
+    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .kpi-card { padding: 14px 12px; }
+    .kpi-value { font-size: 22px; }
+    .kpi-label { font-size: 10px; }
+    .kpi-link { display: none; }
+
+    /* Charts */
+    .charts-grid { grid-template-columns: 1fr; gap: 12px; margin-bottom: 14px; }
+    .chart-card.full { grid-column: span 1; }
+    .chart-card { padding: 14px; }
+
+    /* Table */
+    .table-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .table-header > div:last-child { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+    .table-search { width: 100%; }
+    .filter-select { width: 100%; }
+    tbody td { padding: 10px 12px; }
+    thead th { padding: 8px 12px; }
+
+    /* Toast */
+    .toast { bottom: 20px; right: 12px; left: 12px; text-align: center; }
+
+    /* Import */
+    .import-zone { padding: 24px 16px; }
+    .import-zone-title { font-size: 14px; }
+
+    /* Analytics grid inline */
+    .kpi-grid[style*="margin-bottom:24px"] { grid-template-columns: 1fr 1fr; }
+
+    /* Empty state */
+    .empty-state { padding: 40px 16px; }
+  }
+
+  @media (max-width: 500px) {
+    .kpi-grid { gap: 8px; }
+    .kpi-value { font-size: 19px; }
+  }
+
+  @media (min-width: 901px) {
+    .hamburger { display: none !important; }
+  }
+
+  /* ── PROFILE SWITCHER ── */
+  .profile-switcher {
+    position: relative;
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(92,141,245,.18);
+    margin-bottom: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .profile-switcher-inner {
+    display: flex; align-items: center; gap: 10px;
+    border-radius: 8px; padding: 6px 8px; margin: -6px -8px;
+    transition: background .15s;
+  }
+  .profile-switcher-inner:hover { background: rgba(255,255,255,.07); }
+  .profile-avatar {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: var(--purple); display: flex; align-items: center;
+    justify-content: center; font-size: 14px; font-weight: 700;
+    color: #fff; flex-shrink: 0; letter-spacing: .5px;
+  }
+  .profile-info { flex: 1; min-width: 0; }
+  .profile-name { font-size: 13px; font-weight: 700; color: #fff; }
+  .profile-sub  { font-size: 11px; color: var(--sidebar-text); }
+  .profile-caret { font-size: 10px; color: var(--sidebar-text); transition: transform .2s; }
+  .profile-switcher.open .profile-caret { transform: rotate(180deg); }
+
+  .profile-dropdown {
+    display: none; position: absolute; top: calc(100% - 4px); left: 12px; right: 12px;
+    background: #161b27; border: 1px solid rgba(92,141,245,.2);
+    border-radius: 10px; overflow: hidden; z-index: 200;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  .profile-switcher.open .profile-dropdown { display: block; }
+  .profile-option {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; cursor: pointer; transition: background .12s;
+    font-size: 13px; font-weight: 600; color: var(--text);
+  }
+  .profile-option:hover { background: rgba(92,141,245,.12); }
+  .profile-option.active { color: var(--purple); }
+  .profile-option-avatar {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: var(--purple); display: flex; align-items: center;
+    justify-content: center; font-size: 11px; font-weight: 700; color: #fff;
+  }
+  .profile-option.active .profile-option-avatar { background: var(--purple); }
+
+  /* ── SYNC STATUS ── */
+  .sync-status-wrap {
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .sync-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+    flex-shrink: 0;
+  }
+  .sync-dot.error { background: var(--red); }
+  .sync-dot.syncing { background: var(--purple); animation: pulse .8s infinite alternate; }
+  @keyframes pulse { from { opacity:.4; } to { opacity:1; } }
+  .sync-time-label {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .btn-sync {
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: rgba(92,141,245,.1);
+    color: var(--purple);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s;
+  }
+  .btn-sync:hover { background: rgba(92,141,245,.2); }
+  .btn-sync:disabled { opacity: .5; cursor: default; }
+
+  /* ── FORECAST ── */
+  .forecast-section {
+    margin-top: 8px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .forecast-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .forecast-card { border-left-color: var(--green) !important; }
+  .forecast-progress-wrap { margin-top: 12px; }
+  .forecast-bar {
+    height: 4px; background: rgba(255,255,255,.08);
+    border-radius: 4px; overflow: hidden; margin-bottom: 5px;
+  }
+  .forecast-bar-fill {
+    height: 100%; background: var(--green); border-radius: 4px;
+    transition: width .5s ease;
+  }
+  .forecast-bar-label { font-size: 11px; color: var(--muted); }
+  .forecast-breakdown { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* ── GS PANEL (Import page) ── */
+  .gs-panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: 2px solid rgba(92,141,245,.4);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-bottom: 20px;
+  }
+  .gs-panel-title {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--purple);
+    margin-bottom: 14px;
+  }
+  .gs-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    transition: border-color .15s;
+    min-width: 0;
+  }
+  .gs-input:focus { outline: none; border-color: var(--purple); }
+  .gs-hint {
+    font-size: 11px; color: var(--muted);
+    padding: 10px 12px;
+    background: rgba(92,141,245,.06);
+    border: 1px solid rgba(92,141,245,.15);
+    border-radius: 6px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<!-- OVERLAY (mobile) -->
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="profile-switcher" id="profile-switcher" onclick="toggleProfileDropdown()">
+    <div class="profile-switcher-inner">
+      <div class="profile-avatar" id="profile-avatar">GT</div>
+      <div class="profile-info">
+        <div class="profile-name" id="profile-name">GT</div>
+        <div class="profile-sub">Buy · Sell</div>
+      </div>
+      <div class="profile-caret">▼</div>
+      <button class="sidebar-close" onclick="event.stopPropagation(); closeSidebar()">×</button>
+    </div>
+    <div class="profile-dropdown" id="profile-dropdown">
+      <div class="profile-option active" id="opt-GT" onclick="switchProfile(event,'GT')">
+        <div class="profile-option-avatar">GT</div> GT
+      </div>
+      <div class="profile-option" id="opt-DT" onclick="switchProfile(event,'DT')">
+        <div class="profile-option-avatar">DT</div> DT
+      </div>
+    </div>
+  </div>
+
+  <a class="nav-item active" onclick="showPage('overview')">
+    Home
+  </a>
+  <a class="nav-item" onclick="showPage('inventory')">
+    Inventory
+    <span class="nav-badge" id="badge-stock">0</span>
+  </a>
+
+  <div class="nav-section-label">Analytics</div>
+  <a class="nav-item" onclick="showPage('analytics')">
+    Analytics
+  </a>
+  <a class="nav-item" onclick="showPage('performance')">
+    Top Sellers
+  </a>
+  <a class="nav-item" onclick="showPage('pricing')">
+    Pricing
+  </a>
+
+  <div class="nav-section-label">Tools</div>
+  <a class="nav-item" onclick="showPage('import')">
+    Import
+  </a>
+  <a class="nav-item" onclick="downloadTemplate()">
+    CSV Template
+  </a>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px;min-width:0">
+      <button class="hamburger" onclick="openSidebar()">≡</button>
+      <div class="topbar-title" id="page-title">Home</div>
+    </div>
+    <div class="topbar-actions">
+      <div id="home-period-pills" style="display:flex;gap:6px">
+        <button class="analytics-pill active" onclick="setHomePeriod(7,this)">Week</button>
+        <button class="analytics-pill" onclick="setHomePeriod(30,this)">Month</button>
+        <button class="analytics-pill" onclick="setHomePeriod(365,this)">Year</button>
+      </div>
+      <div class="sync-status-wrap" id="sync-status-wrap">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span class="sync-time-label" id="sync-time-label">—</span>
+        <button class="btn-sync" id="btn-sync-topbar" onclick="syncCurrentProfile()">↻ Sync</button>
+      </div>
+      <button class="btn btn-primary" id="btn-import" style="display:none" onclick="showPage('import')">Import</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── PAGE : OVERVIEW ── -->
+    <div id="page-overview" class="page active">
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-label">Revenue</div>
+          </div>
+          <div class="kpi-value" id="kpi-ca">—</div>
+          <span class="kpi-change neutral" id="kpi-ca-change">— data</span>
+          <div class="kpi-sub">
+            <span>Total collected</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-label">Net margin</div>
+            <a class="kpi-link" onclick="showPage('analytics')">View details</a>
+          </div>
+          <div class="kpi-value" id="kpi-marge">—</div>
+          <span class="kpi-change neutral" id="kpi-marge-pct">—</span>
+          <div class="kpi-sub">
+            <span>After fees</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-label">Current stock</div>
+            <a class="kpi-link" onclick="showPage('inventory')">View stock</a>
+          </div>
+          <div class="kpi-value" id="kpi-stock">—</div>
+          <span class="kpi-change neutral" id="kpi-stock-val">—</span>
+          <div class="kpi-sub">
+            <span>Tied-up capital</span>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <div class="kpi-label">Bags sold</div>
+          </div>
+          <div class="kpi-value" id="kpi-vendu">—</div>
+          <span class="kpi-change neutral" id="kpi-roi">—</span>
+          <div class="kpi-sub">
+            <span>Avg ROI</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHARTS ROW 1 : monthly full width -->
+      <div class="charts-grid">
+        <div class="chart-card full">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Monthly sales (€)</div>
+              <div class="chart-legend">
+                <span><span class="legend-dot" style="background:#5c8df5"></span>CA</span>
+                <span><span class="legend-dot" style="background:#00875a"></span>Margin</span>
+              </div>
+            </div>
+          </div>
+          <canvas id="chart-monthly" height="120"></canvas>
+        </div>
+      </div>
+
+      <!-- CHARTS ROW 2 : top marques + rotation horizontal -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Top brands (margin €)</div>
+          </div>
+          <canvas id="chart-brands" height="180"></canvas>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div class="chart-title">Rotation time (days)</div>
+          </div>
+          <canvas id="chart-rotation" height="180"></canvas>
+        </div>
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div id="overview-empty" class="empty-state">
+        
+        <div class="empty-state-title">No data imported</div>
+        <div class="empty-state-sub">Import your CSV or Excel file to view your statistics</div>
+        <br>
+        <button class="btn btn-primary" onclick="showPage('import')">Import data</button>
+      </div>
+
+    </div>
+
+    <!-- ── PAGE : INVENTORY ── -->
+    <div id="page-inventory" class="page">
+      <div class="table-card">
+        <div class="table-header">
+          <div>
+            <div class="table-title">Full inventory</div>
+            <div class="table-count" id="inventory-count">0 items</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select class="filter-select" id="filter-statut" onchange="renderInventory()">
+              <option value="">All statuses</option>
+              <option value="En stock">In stock</option>
+              <option value="En vente">For sale</option>
+              <option value="Vendu">Sold</option>
+            </select>
+            <input class="table-search" type="text" placeholder="Search..." id="search-input" oninput="renderInventory()">
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th onclick="sortTable('marque')">Brand</th>
+                <th onclick="sortTable('modele')">Model</th>
+                <th onclick="sortTable('etat')">Condition</th>
+                <th onclick="sortTable('prix_achat')">Purchase</th>
+                <th onclick="sortTable('vente_estime')">Vente estimé</th>
+                <th onclick="sortTable('prix_vente')">Sale</th>
+                <th onclick="sortTable('marge_nette')">Margin</th>
+                <th onclick="sortTable('statut')">Status</th>
+                <th onclick="sortTable('plateforme')">Platform</th>
+                <th onclick="sortTable('date_achat')">Purchase date</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-body">
+              <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted)">No data — import a file</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ── PAGE : ANALYTICS ── -->
+    <div id="page-analytics" class="page">
+
+      <!-- Filter bar -->
+      <div class="analytics-filters">
+        <div class="analytics-filter-group">
+          <button class="analytics-pill active" data-period="30" onclick="setAnalyticsPeriod(30,this)">This month</button>
+          <button class="analytics-pill" data-period="90" onclick="setAnalyticsPeriod(90,this)">This quarter</button>
+          <button class="analytics-pill" data-period="365" onclick="setAnalyticsPeriod(365,this)">This year</button>
+          <button class="analytics-pill" data-period="0" onclick="setAnalyticsPeriod(0,this)">All</button>
+        </div>
+        <div class="analytics-filter-group">
+          <select class="analytics-select" id="analytics-brand" onchange="renderAnalyticsCharts()">
+            <option value="">All brands</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 2 big KPI cards -->
+      <div class="analytics-kpi-row">
+        <div class="analytics-kpi-card">
+          <div class="analytics-kpi-label">Revenue</div>
+          <div class="analytics-kpi-row-inner">
+            <div class="analytics-kpi-value" id="an-ca">—</div>
+            <div class="analytics-kpi-change" id="an-ca-change"></div>
+          </div>
+          <div class="analytics-kpi-sub" id="an-ca-sub"></div>
+        </div>
+        <div class="analytics-kpi-card">
+          <div class="analytics-kpi-label">Gross margin</div>
+          <div class="analytics-kpi-row-inner">
+            <div class="analytics-kpi-value" id="an-marge">—</div>
+            <div class="analytics-kpi-change" id="an-marge-change"></div>
+          </div>
+          <div class="analytics-kpi-sub" id="an-marge-sub"></div>
+        </div>
+      </div>
+
+      <!-- Big area chart -->
+      <div class="chart-card" style="margin-bottom:16px">
+        <canvas id="chart-cumul" height="180"></canvas>
+      </div>
+
+      <!-- 4 indicator cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-header"><div class="kpi-label">Avg ROI</div></div>
+          <div class="kpi-value" id="avg-roi-an">—</div>
+          <div class="kpi-sub"><span style="color:var(--muted)">Per sale</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-header"><div class="kpi-label">Avg purchase price</div></div>
+          <div class="kpi-value" id="avg-achat">—</div>
+          <div class="kpi-sub"><span style="color:var(--muted)">Excl. fees</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-header"><div class="kpi-label">Avg sale price</div></div>
+          <div class="kpi-value" id="avg-vente">—</div>
+          <div class="kpi-sub"><span style="color:var(--muted)">Bags sold</span></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-header"><div class="kpi-label">Avg rotation</div></div>
+          <div class="kpi-value" id="avg-rotation">—</div>
+          <div class="kpi-sub"><span style="color:var(--muted)">Days in stock</span></div>
+        </div>
+      </div>
+
+      <!-- ── PRÉVISION ── -->
+      <div class="forecast-section">
+        <div class="forecast-header">
+          <span class="chart-title">PRÉVISION — SI TOUT EST VENDU CE MOIS</span>
+          <span id="fc-remaining" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div class="analytics-kpi-row">
+
+          <div class="analytics-kpi-card forecast-card">
+            <div class="analytics-kpi-label">CA projeté du mois</div>
+            <div class="analytics-kpi-row-inner">
+              <div class="analytics-kpi-value" id="fc-ca">—</div>
+            </div>
+            <div class="forecast-breakdown" id="fc-ca-breakdown"></div>
+            <div class="forecast-progress-wrap">
+              <div class="forecast-bar"><div class="forecast-bar-fill" id="fc-bar-ca" style="width:0%"></div></div>
+              <div class="forecast-bar-label" id="fc-bar-ca-label"></div>
+            </div>
+          </div>
+
+          <div class="analytics-kpi-card forecast-card">
+            <div class="analytics-kpi-label">Profit projeté du mois</div>
+            <div class="analytics-kpi-row-inner">
+              <div class="analytics-kpi-value" id="fc-profit">—</div>
+            </div>
+            <div class="forecast-breakdown" id="fc-profit-breakdown"></div>
+            <div class="forecast-progress-wrap">
+              <div class="forecast-bar"><div class="forecast-bar-fill" id="fc-bar-profit" style="width:0%"></div></div>
+              <div class="forecast-bar-label" id="fc-bar-profit-label"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── PAGE : PERFORMANCE ── -->
+    <div id="page-performance" class="page">
+      <div class="chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Top sellers — sales by platform</div>
+        </div>
+        <canvas id="chart-top-sellers"></canvas>
+      </div>
+    </div>
+
+    <!-- ── PAGE : PRICING ── -->
+    <div id="page-pricing" class="page">
+      <div class="pricing-layout">
+
+        <!-- INPUT CARD -->
+        <div class="chart-card pricing-form-card">
+          <div class="chart-header">
+            <div class="chart-title">Bag details</div>
+          </div>
+          <div class="pricing-form">
+            <div class="pricing-field">
+              <label class="pricing-label">Brand</label>
+              <select id="pricing-brand" class="pricing-input" onchange="updatePricingModels()">
+                <option value="">Select a brand…</option>
+              </select>
+            </div>
+            <div class="pricing-field">
+              <label class="pricing-label">Model</label>
+              <select id="pricing-model" class="pricing-input">
+                <option value="">All models</option>
+              </select>
+            </div>
+            <div class="pricing-field">
+              <label class="pricing-label">Purchase price (€)</label>
+              <input id="pricing-purchase" type="number" class="pricing-input" placeholder="e.g. 850" min="0">
+            </div>
+            <div class="pricing-field">
+              <label class="pricing-label">Condition</label>
+              <select id="pricing-condition" class="pricing-input">
+                <option value="">Any condition</option>
+                <option value="Excellent">Excellent</option>
+                <option value="Bon">Good</option>
+                <option value="Correct">Fair</option>
+              </select>
+            </div>
+            <button class="btn btn-primary pricing-btn" onclick="computePricing()">Get price suggestion</button>
+          </div>
+        </div>
+
+        <!-- RESULT CARD -->
+        <div class="chart-card pricing-result-card" id="pricing-result" style="display:none">
+          <div class="chart-header">
+            <div class="chart-title">Suggested price</div>
+          </div>
+          <div class="pricing-result-body">
+            <div class="pricing-suggested" id="pricing-suggested-price">—</div>
+            <div class="pricing-range" id="pricing-range"></div>
+            <div class="pricing-confidence" id="pricing-confidence"></div>
+            <div class="pricing-stats" id="pricing-stats"></div>
+          </div>
+        </div>
+
+        <!-- NO DATA STATE -->
+        <div class="chart-card pricing-result-card" id="pricing-no-data" style="display:none">
+          <div class="pricing-result-body" style="text-align:center;padding:32px 0;color:var(--muted)">
+            <div style="font-size:32px;margin-bottom:12px">—</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No similar sales found</div>
+            <div style="font-size:13px">Try selecting a different brand or model</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── PAGE : IMPORT ── -->
+    <div id="page-import" class="page">
+
+      <!-- Google Sheets panel -->
+      <div class="gs-panel">
+        <div class="gs-panel-title">Google Sheets — Auto-sync</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">
+              Google Sheet URL &nbsp;·&nbsp; <em>Colle l'URL de partage du sheet (bouton "Partager" → "Toute personne disposant du lien")</em>
+            </div>
+            <div style="display:flex;gap:8px">
+              <input id="gs-url-input" class="gs-input" type="url"
+                placeholder="https://docs.google.com/spreadsheets/d/…"
+                onkeydown="if(event.key==='Enter')saveGSConfig()">
+              <button class="btn btn-primary" onclick="saveGSConfig()">Connect</button>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px;color:var(--muted)">Auto-sync :</span>
+              <select id="gs-interval-select" class="analytics-select" style="font-size:12px;padding:5px 10px">
+                <option value="0">Off</option>
+                <option value="5">Every 5 min</option>
+                <option value="15">Every 15 min</option>
+                <option value="60">Every hour</option>
+              </select>
+            </div>
+            <button class="btn-sync" id="gs-sync-btn" onclick="syncCurrentProfile()">↻ Sync now</button>
+            <span id="gs-sync-status" style="font-size:12px;color:var(--muted)">No sheet connected</span>
+          </div>
+
+          <div class="gs-hint">
+            <strong style="color:var(--text)">Comment connecter :</strong><br>
+            1. Ouvre ton Google Sheet<br>
+            2. Clique <strong>Partager</strong> (bouton bleu en haut à droite)<br>
+            3. Accès général → <strong>"Toute personne disposant du lien"</strong> → Lecteur<br>
+            4. <strong>Copie le lien</strong> → colle-le ci-dessus → <strong>Connect</strong><br><br>
+            <strong style="color:var(--text)">Colonnes attendues :</strong><br>
+            <span style="color:var(--purple)">marque · modele · reference · couleur · etat · prix_achat · vente_estime · prix_vente · statut · plateforme · date_achat · date_vente · notes</span><br>
+            Statut : <strong>Vendu</strong> / <strong>En vente</strong> / <strong>En stock</strong>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- File upload (fallback) -->
+      <div class="import-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        
+        <div class="import-zone-title">Drop your file here or click to browse</div>
+        <div class="import-zone-sub">Supported formats: CSV, Excel (.xlsx, .xls)</div>
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls" onchange="handleFileInput(event)">
+        <br>
+        <button class="btn btn-primary" style="margin-top:12px" onclick="event.stopPropagation();document.getElementById('file-input').click()">
+          Choose a file
+        </button>
+      </div>
+
+      <div class="chart-card" style="margin-bottom:16px">
+        <div class="chart-title" style="margin-bottom:12px">EXPECTED FILE COLUMNS</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px">
+          <div><strong>marque</strong> — e.g. Chanel</div>
+          <div><strong>modele</strong> — e.g. Timeless</div>
+          <div><strong>reference</strong> — e.g. CC-2024</div>
+          <div><strong>couleur</strong> — e.g. Black</div>
+          <div><strong>etat</strong> — Excellent / Good / Fair</div>
+          <div><strong>prix_achat</strong> — 850</div>
+          <div><strong>vente_estime</strong> — 1200</div>
+          <div><strong>prix_vente</strong> — 1200</div>
+          <div><strong>statut</strong> — In stock / For sale / Sold</div>
+          <div><strong>plateforme</strong> — Vinted / Vestiaire…</div>
+          <div><strong>date_achat</strong> — 2024-01-15</div>
+          <div><strong>date_vente</strong> — 2024-02-10</div>
+          <div><strong>notes</strong> — optional</div>
+        </div>
+      </div>
+
+      <button class="btn" onclick="downloadTemplate()">Download CSV template</button>
+
+      <div id="import-log" style="margin-top:16px;font-size:13px;color:var(--muted)"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+
+<script>
+// ══════════════════════════════
+//  CHART DARK DEFAULTS
+// ══════════════════════════════
+Chart.defaults.color = '#6b7a9b';
+Chart.defaults.borderColor = '#1e2535';
+Chart.defaults.plugins.legend.labels.color = '#8b9ab8';
+Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+
+// ══════════════════════════════
+//  STATE
+// ══════════════════════════════
+let currentProfile = 'GT';
+let allData = [];
+let sortKey = 'date_achat';
+
+// ── PROFILE MANAGEMENT ──
+function saveProfileData() {
+  localStorage.setItem('wd_data_' + currentProfile, JSON.stringify(allData));
+}
+
+function loadProfileData(profile) {
+  const saved = localStorage.getItem('wd_data_' + profile);
+  allData = saved ? JSON.parse(saved) : [];
+}
+
+function toggleProfileDropdown() {
+  document.getElementById('profile-switcher').classList.toggle('open');
+}
+
+function switchProfile(e, profile) {
+  e.stopPropagation();
+  if (profile === currentProfile) {
+    document.getElementById('profile-switcher').classList.remove('open');
+    return;
+  }
+  saveProfileData();
+  currentProfile = profile;
+  loadProfileData(profile);
+  // Update UI
+  document.getElementById('profile-avatar').textContent = profile;
+  document.getElementById('profile-name').textContent = profile;
+  document.getElementById('profile-avatar').style.background = 'var(--purple)';
+  document.querySelectorAll('.profile-option').forEach(o => o.classList.remove('active'));
+  document.getElementById('opt-' + profile).classList.add('active');
+  document.getElementById('profile-switcher').classList.remove('open');
+  // Refresh all views
+  updateBadge();
+  computeKPIs();
+  renderInventory();
+  updateGSStatus();
+  startAutoSync();
+  showPage('overview');
+  showToast(`Switched to ${profile}`);
+}
+
+// ══════════════════════════════
+//  GOOGLE SHEETS SYNC
+// ══════════════════════════════
+function getSheetUrl(profile)      { return localStorage.getItem('gs_url_' + profile) || ''; }
+function setSheetUrl(profile, url) { localStorage.setItem('gs_url_' + profile, url); }
+function getSheetInterval(profile) { return parseInt(localStorage.getItem('gs_interval_' + profile) || '0') || 0; }
+function setSheetInterval(profile, m) { localStorage.setItem('gs_interval_' + profile, m); }
+
+function extractSheetId(url) {
+  const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+let autoSyncTimer = null;
+
+function saveGSConfig() {
+  const url = (document.getElementById('gs-url-input').value || '').trim();
+  const interval = parseInt(document.getElementById('gs-interval-select').value || '0') || 0;
+  setSheetUrl(currentProfile, url);
+  setSheetInterval(currentProfile, interval);
+  if (url) syncCurrentProfile();
+  else updateGSStatus();
+  startAutoSync();
+}
+
+async function syncCurrentProfile() {
+  const url = getSheetUrl(currentProfile);
+  if (!url) return;
+  const sheetId = extractSheetId(url);
+  if (!sheetId) { showToast('URL Google Sheet invalide'); return; }
+
+  const statusEl  = document.getElementById('gs-sync-status');
+  const syncBtn   = document.getElementById('gs-sync-btn');
+  const topBtn    = document.getElementById('btn-sync-topbar');
+  const dotEl     = document.getElementById('sync-dot');
+
+  if (statusEl) statusEl.textContent = 'Syncing…';
+  if (dotEl)    { dotEl.className = 'sync-dot syncing'; }
+  if (syncBtn)  syncBtn.disabled = true;
+  if (topBtn)   topBtn.disabled = true;
+
+  try {
+    // gviz/tq works with "Anyone with the link" — no publish to web needed
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
+    // Try two CORS proxies in sequence
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(csvUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(csvUrl)}`
+    ];
+    let csv = null;
+    for (const p of proxies) {
+      try {
+        const r = await fetch(p);
+        if (!r.ok) continue;
+        const t = await r.text();
+        if (!t.trim().startsWith('<')) { csv = t; break; }
+      } catch (_) { continue; }
+    }
+    if (!csv) throw new Error('Sheet non partagé — active "Toute personne disposant du lien"');
+
+    const parsed = Papa.parse(csv, { header: true, skipEmptyLines: true });
+    const fakeLog = { innerHTML: '' };
+    ingestData(parsed.data, 'Google Sheets', fakeLog);
+
+    const now = new Date();
+    localStorage.setItem('gs_last_sync_' + currentProfile, now.toISOString());
+
+    const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--green)">Synced at ${timeStr} — ${allData.length} items</span>`;
+    if (dotEl)    dotEl.className = 'sync-dot';
+    document.getElementById('sync-time-label').textContent = `Synced ${timeStr}`;
+    showToast(`Google Sheets — ${allData.length} items synced`);
+  } catch (err) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--red)">Erreur : ${err.message}</span>`;
+    if (dotEl)    dotEl.className = 'sync-dot error';
+    showToast('Sync échoué — ' + err.message);
+  } finally {
+    if (syncBtn) syncBtn.disabled = false;
+    if (topBtn)  topBtn.disabled = false;
+  }
+}
+
+function startAutoSync() {
+  clearInterval(autoSyncTimer);
+  autoSyncTimer = null;
+  const interval = getSheetInterval(currentProfile);
+  if (interval > 0) {
+    autoSyncTimer = setInterval(() => syncCurrentProfile(), interval * 60 * 1000);
+  }
+}
+
+function updateGSStatus() {
+  const url       = getSheetUrl(currentProfile);
+  const lastSync  = localStorage.getItem('gs_last_sync_' + currentProfile);
+  const interval  = getSheetInterval(currentProfile);
+
+  // Sync status wrap (topbar)
+  const wrapEl = document.getElementById('sync-status-wrap');
+  if (wrapEl) wrapEl.style.display = url ? 'flex' : 'none';
+
+  if (url && lastSync) {
+    const d = new Date(lastSync);
+    const timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const label = document.getElementById('sync-time-label');
+    if (label) label.textContent = `Synced ${timeStr}`;
+  }
+
+  // Import page form
+  const input = document.getElementById('gs-url-input');
+  if (input) input.value = url || '';
+
+  const sel = document.getElementById('gs-interval-select');
+  if (sel) sel.value = interval;
+
+  const statusEl = document.getElementById('gs-sync-status');
+  if (statusEl) {
+    if (!url) {
+      statusEl.textContent = 'No sheet connected';
+    } else if (lastSync) {
+      const d = new Date(lastSync);
+      const timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      statusEl.innerHTML = `<span style="color:var(--green)">Connected — last sync: ${timeStr}</span>`;
+    } else {
+      statusEl.innerHTML = `<span style="color:var(--muted)">Connected — not synced yet</span>`;
+    }
+  }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  if (!document.getElementById('profile-switcher').contains(e.target)) {
+    document.getElementById('profile-switcher').classList.remove('open');
+  }
+});
+let sortDir = 1;
+
+const COLS = {
+  marque:'marque', modele:'modèle', reference:'référence', couleur:'couleur',
+  etat:'état', prix_achat:'prix_achat', vente_estime:'vente_estime', prix_vente:'prix_vente',
+  statut:'statut', plateforme:'plateforme', date_achat:'date_achat',
+  date_vente:'date_vente', notes:'notes'
+};
+
+// Chart instances
+let charts = {};
+
+// ══════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════
+const pageTitles = {
+  overview: "Home",
+  inventory: "Inventory",
+  analytics: "Analytics",
+  performance: "Top Sellers",
+  pricing: "Pricing",
+  import: "Import"
+};
+
+const bnPages = ['overview','inventory','analytics','import'];
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.getElementById('page-title').textContent = pageTitles[id] || id;
+  // highlight sidebar nav
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick') && n.getAttribute('onclick').includes(id)) {
+      n.classList.add('active');
+    }
+  });
+  // highlight bottom nav
+  bnPages.forEach(p => {
+    const el = document.getElementById('bn-' + p);
+    if (el) el.classList.toggle('active', p === id);
+  });
+  closeSidebar();
+  const isHome = id === 'overview';
+  document.getElementById('home-period-pills').style.display = isHome ? 'flex' : 'none';
+  document.getElementById('btn-import').style.display = isHome ? 'none' : 'block';
+  if (isHome) renderCharts();
+  if (id === 'analytics') renderAnalyticsCharts();
+  if (id === 'performance') renderPerformanceCharts();
+  if (id === 'pricing') initPricing();
+  if (id === 'import') updateGSStatus();
+}
+
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ══════════════════════════════
+//  FILE IMPORT
+// ══════════════════════════════
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('dragover');
+}
+function handleDragLeave(e) {
+  document.getElementById('drop-zone').classList.remove('dragover');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function handleFileInput(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const log = document.getElementById('import-log');
+  log.textContent = `⏳ Reading "${file.name}"…`;
+
+  if (ext === 'csv') {
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true,
+      complete: res => { ingestData(res.data, file.name, log); }
+    });
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      ingestData(data, file.name, log);
+    };
+    reader.readAsBinaryString(file);
+  } else {
+    log.textContent = '✗ Unsupported format. Use CSV, XLSX or XLS.';
+  }
+}
+
+function ingestData(raw, name, log) {
+  // Known field names — used to remap headers like "marque_e.g._chanel" → "marque"
+  const FIELDS = ['marque','modele','reference','couleur','etat','prix_achat',
+                  'vente_estime','prix_vente','statut','plateforme',
+                  'date_achat','date_vente','notes'];
+
+  // Clean numbers: strip €, spaces, non-numeric chars except , and .
+  const num = s => parseFloat(String(s||'0').replace(/[^\d,.]/g,'').replace(',','.')) || 0;
+
+  // Normalize statut to French regardless of input language
+  const normStatut = s => {
+    const v = String(s||'').trim().toLowerCase();
+    if (v==='vendu'||v==='sold') return 'Vendu';
+    if (v==='en vente'||v==='for sale'||v==='à vendre') return 'En vente';
+    if (v==='en stock'||v==='in stock'||v==='stock') return 'En stock';
+    return String(s||'').trim();
+  };
+
+  allData = raw.map(row => {
+    const r = {};
+    // Normalize keys: lowercase + spaces→underscore
+    Object.entries(row).forEach(([k, v]) => {
+      const nk = k.trim().toLowerCase().replace(/\s+/g,'_');
+      r[nk] = v;
+    });
+    // Remap extended headers (e.g. "marque_e.g._chanel" → "marque")
+    Object.keys(r).forEach(k => {
+      for (const f of FIELDS) {
+        if (k.startsWith(f) && k !== f && r[f] === undefined) { r[f] = r[k]; break; }
+      }
+    });
+
+    const pa = num(r.prix_achat);
+    const ve = num(r.vente_estime || r['vente_estimé'] || r.prix_vente_estime);
+    const pv = num(r.prix_vente);
+    const marge_nette = pv > 0 ? pv - pa : (ve > 0 ? ve - pa : 0);
+    const roi = pa > 0 ? (marge_nette / pa * 100) : 0;
+
+    r.statut = normStatut(r.statut);
+
+    let rotation = null;
+    if (r.date_achat && r.date_vente) {
+      const da = new Date(r.date_achat), dv = new Date(r.date_vente);
+      if (!isNaN(da) && !isNaN(dv)) rotation = Math.round((dv - da) / 86400000);
+    }
+
+    return { ...r, prix_achat: pa, vente_estime: ve, prix_vente: pv, marge_nette, roi, rotation };
+  }).filter(r => r.marque && String(r.marque).trim() !== '');
+
+  log.innerHTML = `✓ <strong>${allData.length} lignes</strong> imported from "${name}"`;
+  updateBadge();
+  computeKPIs();
+  renderInventory();
+  saveProfileData();
+  showToast(`${allData.length} items imported successfully`);
+  showPage('overview');
+}
+
+// ══════════════════════════════
+//  KPIs
+// ══════════════════════════════
+let homePeriodDays = 7;
+
+function setHomePeriod(days, btn) {
+  homePeriodDays = days;
+  document.querySelectorAll('#home-period-pills .analytics-pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  computeKPIs(); renderCharts();
+}
+
+function getFiltered() {
+  if (!homePeriodDays) return allData;
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - homePeriodDays);
+  return allData.filter(r => {
+    const d = r.date_vente ? new Date(r.date_vente) : (r.date_achat ? new Date(r.date_achat) : null);
+    return d && d >= cutoff;
+  });
+}
+
+function fmt(n) {
+  if (isNaN(n) || n === null) return '—';
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+}
+
+function computeKPIs() {
+  const data = getFiltered();
+  const sold = data.filter(r => r.statut === 'Vendu');
+  // Stock = tous les articles non vendus, indépendamment du filtre période
+  const stock = allData.filter(r => r.statut !== 'Vendu');
+
+  const ca = sold.reduce((s, r) => s + (r.prix_vente || 0), 0);
+  const marge = sold.reduce((s, r) => s + (r.marge_nette || 0), 0);
+  const margePct = ca > 0 ? (marge / ca * 100).toFixed(1) : 0;
+  const stockCount = stock.length;
+  const capitalStock = stock.reduce((s, r) => s + (r.prix_achat || 0), 0);
+  const avgRoi = sold.length > 0 ? (sold.reduce((s,r)=>s+r.roi,0)/sold.length).toFixed(1) : 0;
+
+  const hasData = allData.length > 0;
+  document.getElementById('overview-empty').style.display = hasData ? 'none' : 'block';
+
+  document.getElementById('kpi-ca').textContent = fmt(ca);
+  document.getElementById('kpi-ca-change').textContent = `${sold.length} sale${sold.length>1?'s':''}`;
+  document.getElementById('kpi-ca-change').className = 'kpi-change ' + (ca > 0 ? 'up' : 'neutral');
+
+  document.getElementById('kpi-marge').textContent = fmt(marge);
+  document.getElementById('kpi-marge-pct').textContent = `${margePct}% of revenue`;
+  document.getElementById('kpi-marge-pct').className = 'kpi-change ' + (marge > 0 ? 'up' : marge < 0 ? 'down' : 'neutral');
+
+  document.getElementById('kpi-stock').textContent = stockCount;
+  document.getElementById('kpi-stock-val').textContent = fmt(capitalStock) + ' tied up';
+  document.getElementById('kpi-stock-val').className = 'kpi-change neutral';
+
+  document.getElementById('kpi-vendu').textContent = sold.length;
+  document.getElementById('kpi-roi').textContent = `Avg ROI : ${avgRoi}%`;
+  document.getElementById('kpi-roi').className = 'kpi-change ' + (avgRoi > 0 ? 'up' : 'neutral');
+
+  // analytics
+  if (sold.length > 0) {
+    const rots = sold.filter(r=>r.rotation!=null).map(r=>r.rotation);
+  }
+
+  document.getElementById('badge-stock').textContent = stockCount;
+}
+
+// ══════════════════════════════
+//  CHARTS
+// ══════════════════════════════
+const COLORS = ['#5c8df5','#34d399','#f59e0b','#f87171','#a78bfa','#38bdf8','#fb923c','#4ade80'];
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function renderCharts() {
+  const sold = getFiltered().filter(r => r.statut === 'Vendu');
+  renderMonthly(sold);
+  renderBrands(sold);
+  renderRotation(sold);
+}
+
+function renderMonthly(sold) {
+  destroyChart('monthly');
+  const byMonth = {};
+  sold.forEach(r => {
+    const d = r.date_vente ? new Date(r.date_vente) : null;
+    if (!d || isNaN(d)) return;
+    const key = d.toLocaleDateString('fr-FR', { year:'numeric', month:'short' });
+    if (!byMonth[key]) byMonth[key] = { ca: 0, marge: 0 };
+    byMonth[key].ca += r.prix_vente || 0;
+    byMonth[key].marge += r.marge_nette || 0;
+  });
+  const labels = Object.keys(byMonth);
+  const ctx = document.getElementById('chart-monthly').getContext('2d');
+  charts['monthly'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Revenue (€)', data: labels.map(l=>byMonth[l].ca), borderColor:'#5c8df5', backgroundColor:'rgba(92,141,245,.12)', fill:true, tension:.3, pointRadius:4 },
+        { label:'Margin (€)', data: labels.map(l=>byMonth[l].marge), borderColor:'#00875a', backgroundColor:'rgba(0,135,90,.08)', fill:true, tension:.3, pointRadius:4 }
+      ]
+    },
+    options: { plugins:{ legend:{ display:false } }, scales:{ y:{ ticks:{ callback: v=>v+'€' } } }, responsive:true }
+  });
+}
+
+
+function renderBrands(sold) {
+  destroyChart('brands');
+  const byB = {};
+  sold.forEach(r => {
+    const b = r.marque || 'Autre';
+    if (!byB[b]) byB[b] = 0;
+    byB[b] += r.marge_nette || 0;
+  });
+  const sorted = Object.entries(byB).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const ctx = document.getElementById('chart-brands').getContext('2d');
+  charts['brands'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(e=>e[0]),
+      datasets: [{ data: sorted.map(e=>e[1]), backgroundColor: 'rgba(92,141,245,.55)', borderRadius: 6 }]
+    },
+    options: { indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{ ticks:{callback:v=>v+'€'} } }, responsive:true }
+  });
+}
+
+function renderRotation(sold) {
+  destroyChart('rotation');
+  const byB = {};
+  sold.filter(r=>r.rotation!=null).forEach(r => {
+    const b = r.marque || 'Autre';
+    if (!byB[b]) byB[b] = [];
+    byB[b].push(r.rotation);
+  });
+  const labels = Object.keys(byB);
+  const avgs = labels.map(l => Math.round(byB[l].reduce((a,b)=>a+b,0)/byB[l].length));
+  const ctx = document.getElementById('chart-rotation').getContext('2d');
+  charts['rotation'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label:'days', data: avgs, backgroundColor:'rgba(92,141,245,.55)', borderRadius:6 }]
+    },
+    options: { indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{ticks:{callback:v=>v+' j'}}}, responsive:true }
+  });
+}
+
+let analyticsDays = 30;
+
+function setAnalyticsPeriod(days, btn) {
+  analyticsDays = days;
+  document.querySelectorAll('.analytics-pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderAnalyticsCharts();
+}
+
+function getAnalyticsData() {
+  const brand = document.getElementById('analytics-brand')?.value || '';
+  let data = allData.filter(r => r.statut === 'Vendu');
+  if (brand) data = data.filter(r => r.marque === brand);
+  if (analyticsDays > 0) {
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - analyticsDays);
+    data = data.filter(r => r.date_vente && new Date(r.date_vente) >= cutoff);
+  }
+  return data;
+}
+
+function getPrevData() {
+  if (analyticsDays <= 0) return [];
+  const brand = document.getElementById('analytics-brand')?.value || '';
+  const now = new Date();
+  const end = new Date(); end.setDate(end.getDate() - analyticsDays);
+  const start = new Date(); start.setDate(start.getDate() - analyticsDays * 2);
+  let data = allData.filter(r => r.statut === 'Vendu');
+  if (brand) data = data.filter(r => r.marque === brand);
+  return data.filter(r => {
+    if (!r.date_vente) return false;
+    const d = new Date(r.date_vente);
+    return d >= start && d < end;
+  });
+}
+
+function renderAnalyticsCharts() {
+  // Populate brand selector
+  const sel = document.getElementById('analytics-brand');
+  if (sel) {
+    const brands = [...new Set(allData.map(r => r.marque).filter(Boolean))].sort();
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All brands</option>' +
+      brands.map(b => `<option value="${b}"${b===cur?' selected':''}>${b}</option>`).join('');
+  }
+
+  const curr = getAnalyticsData().sort((a,b) => new Date(a.date_vente) - new Date(b.date_vente));
+  const prev = getPrevData();
+
+  // Big KPIs
+  const ca = curr.reduce((s,r) => s + (r.prix_vente||0), 0);
+  const marge = curr.reduce((s,r) => s + (r.marge_nette||0), 0);
+  const prevCa = prev.reduce((s,r) => s + (r.prix_vente||0), 0);
+  const prevMarge = prev.reduce((s,r) => s + (r.marge_nette||0), 0);
+
+  const caPct = prevCa > 0 ? ((ca - prevCa) / prevCa * 100).toFixed(0) : null;
+  const margePct = prevMarge > 0 ? ((marge - prevMarge) / prevMarge * 100).toFixed(0) : null;
+
+  document.getElementById('an-ca').textContent = fmt(ca);
+  document.getElementById('an-marge').textContent = fmt(marge);
+  document.getElementById('an-ca-sub').textContent = `${curr.length} vente${curr.length>1?'s':''}`;
+  document.getElementById('an-marge-sub').textContent = ca > 0 ? `${(marge/ca*100).toFixed(1)}% of revenue` : '';
+
+  const caEl = document.getElementById('an-ca-change');
+  const margeEl = document.getElementById('an-marge-change');
+  if (caPct !== null) {
+    caEl.textContent = `${caPct >= 0 ? '↑' : '↓'} ${Math.abs(caPct)}%`;
+    caEl.style.color = caPct >= 0 ? 'var(--green)' : 'var(--red)';
+  } else { caEl.textContent = ''; }
+  if (margePct !== null) {
+    margeEl.textContent = `${margePct >= 0 ? '↑' : '↓'} ${Math.abs(margePct)}%`;
+    margeEl.style.color = margePct >= 0 ? 'var(--green)' : 'var(--red)';
+  } else { margeEl.textContent = ''; }
+
+  // Avg indicators
+  if (curr.length > 0) {
+    const avgRoi = (curr.reduce((s,r)=>s+r.roi,0)/curr.length).toFixed(1);
+    document.getElementById('avg-roi-an').textContent = avgRoi + '%';
+    document.getElementById('avg-achat').textContent = fmt(curr.reduce((s,r)=>s+r.prix_achat,0)/curr.length);
+    document.getElementById('avg-vente').textContent = fmt(curr.reduce((s,r)=>s+r.prix_vente,0)/curr.length);
+    const rots = curr.filter(r=>r.rotation!=null).map(r=>r.rotation);
+    document.getElementById('avg-rotation').textContent = rots.length ? Math.round(rots.reduce((a,b)=>a+b,0)/rots.length) + ' j' : '—';
+  }
+
+  // Area chart — CA par jour (period)
+  destroyChart('cumul');
+  const byDay = {};
+  curr.forEach(r => {
+    const d = r.date_vente ? new Date(r.date_vente).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '—';
+    if (!byDay[d]) byDay[d] = { ca: 0, marge: 0 };
+    byDay[d].ca += r.prix_vente || 0;
+    byDay[d].marge += r.marge_nette || 0;
+  });
+  const byDayPrev = {};
+  prev.forEach(r => {
+    const d = r.date_vente ? new Date(r.date_vente).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '—';
+    if (!byDayPrev[d]) byDayPrev[d] = 0;
+    byDayPrev[d] += r.prix_vente || 0;
+  });
+
+  const labels = Object.keys(byDay);
+  const caData = labels.map(l => byDay[l].ca);
+  const prevLabels = Object.keys(byDayPrev);
+
+  const ctx = document.getElementById('chart-cumul').getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 300);
+  grad.addColorStop(0, 'rgba(92,141,245,.25)');
+  grad.addColorStop(1, 'rgba(92,141,245,.01)');
+
+  // ── Forecast ──
+  const now2 = new Date();
+  const monthStart = new Date(now2.getFullYear(), now2.getMonth(), 1);
+  const soldThisMonth = allData.filter(r =>
+    r.statut === 'Vendu' && r.date_vente && new Date(r.date_vente) >= monthStart
+  );
+  const unsold = allData.filter(r => r.statut !== 'Vendu');
+  const caRealise     = soldThisMonth.reduce((s,r) => s + (r.prix_vente||0), 0);
+  const profitRealise = soldThisMonth.reduce((s,r) => s + (r.marge_nette||0), 0);
+  const caProjecte    = unsold.reduce((s,r) => s + (r.vente_estime||0), 0);
+  const profitProjecte= unsold.reduce((s,r) => s + Math.max(0,(r.vente_estime||0)-(r.prix_achat||0)), 0);
+  const caTotal       = caRealise + caProjecte;
+  const profitTotal   = profitRealise + profitProjecte;
+  const fcCaPct   = caTotal > 0 ? Math.round(caRealise / caTotal * 100) : 0;
+  const fcProfPct = profitTotal > 0 ? Math.round(profitRealise / profitTotal * 100) : 0;
+
+  document.getElementById('fc-ca').textContent = fmt(caTotal);
+  document.getElementById('fc-profit').textContent = fmt(profitTotal);
+  document.getElementById('fc-ca-breakdown').innerHTML =
+    `<span style="color:var(--green)">${fmt(caRealise)} réalisé</span> &nbsp;+&nbsp; ${fmt(caProjecte)} estimé (${unsold.length} sacs)`;
+  document.getElementById('fc-profit-breakdown').innerHTML =
+    `<span style="color:var(--green)">${fmt(profitRealise)} réalisé</span> &nbsp;+&nbsp; ${fmt(profitProjecte)} estimé`;
+  document.getElementById('fc-bar-ca').style.width    = fcCaPct + '%';
+  document.getElementById('fc-bar-profit').style.width = fcProfPct + '%';
+  document.getElementById('fc-bar-ca-label').textContent    = `${fcCaPct}% du CA déjà encaissé ce mois`;
+  document.getElementById('fc-bar-profit-label').textContent = `${fcProfPct}% du profit déjà réalisé ce mois`;
+  document.getElementById('fc-remaining').textContent =
+    `${unsold.length} article${unsold.length>1?'s':''} encore à vendre`;
+
+  charts['cumul'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'CA période',
+          data: caData,
+          borderColor: '#5c8df5',
+          backgroundColor: grad,
+          fill: true, tension: .45,
+          pointRadius: 0, borderWidth: 2.5
+        },
+        {
+          label: 'Période précédente',
+          data: prevLabels.map(l => byDayPrev[l]),
+          borderColor: 'rgba(139,154,184,.4)',
+          backgroundColor: 'transparent',
+          fill: false, tension: .45,
+          pointRadius: 0, borderWidth: 1.5,
+          borderDash: [5,4]
+        }
+      ]
+    },
+    options: {
+      plugins: { legend: { position:'bottom', labels:{ boxWidth:10, padding:16 } } },
+      scales: {
+        x: { grid:{ display:false }, ticks:{ maxTicksLimit:8 } },
+        y: { ticks:{ callback: v => v >= 1000 ? (v/1000).toFixed(1)+'k' : v+'€' }, grid:{ color:'rgba(255,255,255,.04)' } }
+      },
+      responsive: true,
+      interaction: { mode:'index', intersect:false }
+    }
+  });
+}
+
+function renderPerformanceCharts() {
+  destroyChart('top-sellers');
+  const sold = allData.filter(r => r.statut === 'Vendu');
+  const byP = {};
+  sold.forEach(r => {
+    const p = (r.plateforme || 'Non renseigné').trim();
+    byP[p] = (byP[p] || 0) + 1;
+  });
+  const sorted = Object.entries(byP).sort((a,b) => b[1] - a[1]);
+  const labels = sorted.map(e => e[0]);
+  const values = sorted.map(e => e[1]);
+
+  const ctx = document.getElementById('chart-top-sellers').getContext('2d');
+
+  charts['top-sellers'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: 'rgba(92,141,245,.45)',
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: { stepSize: 1, callback: v => v + ' vente' + (v > 1 ? 's' : '') },
+          grid: { color: 'rgba(255,255,255,.04)' }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { size: 13 } }
+        }
+      },
+      responsive: true
+    }
+  });
+}
+
+// ══════════════════════════════
+//  PRICING
+// ══════════════════════════════
+function initPricing() {
+  const brands = [...new Set(allData.map(r => r.marque).filter(Boolean))].sort();
+  const sel = document.getElementById('pricing-brand');
+  sel.innerHTML = '<option value="">Select a brand…</option>' +
+    brands.map(b => `<option value="${b}">${b}</option>`).join('');
+}
+
+function updatePricingModels() {
+  const brand = document.getElementById('pricing-brand').value;
+  const models = [...new Set(allData.filter(r => r.marque === brand).map(r => r.modele).filter(Boolean))].sort();
+  const sel = document.getElementById('pricing-model');
+  sel.innerHTML = '<option value="">All models</option>' +
+    models.map(m => `<option value="${m}">${m}</option>`).join('');
+}
+
+function computePricing() {
+  const brand     = document.getElementById('pricing-brand').value;
+  const model     = document.getElementById('pricing-model').value;
+  const purchase  = parseFloat(document.getElementById('pricing-purchase').value) || 0;
+  const condition = document.getElementById('pricing-condition').value;
+
+  const result   = document.getElementById('pricing-result');
+  const noData   = document.getElementById('pricing-no-data');
+  result.style.display = 'none';
+  noData.style.display = 'none';
+
+  if (!brand) { showToast('Please select a brand first'); return; }
+
+  const sold = allData.filter(r => r.statut === 'Vendu');
+  let pool = sold.filter(r => r.marque === brand);
+  if (model)     pool = pool.filter(r => r.modele === model).length ? pool.filter(r => r.modele === model) : pool;
+  if (condition) pool = pool.filter(r => r.etat === condition).length ? pool.filter(r => r.etat === condition) : pool;
+
+  if (!pool.length) { noData.style.display = 'block'; return; }
+
+  const avgSalePrice = pool.reduce((s, r) => s + r.prix_vente, 0) / pool.length;
+  const avgRoi       = pool.reduce((s, r) => s + r.roi, 0) / pool.length;
+  const avgMargin    = pool.reduce((s, r) => s + r.marge_nette, 0) / pool.length;
+  const avgFees      = 0; // fees no longer tracked
+  const prices       = pool.map(r => r.prix_vente).sort((a, b) => a - b);
+  const minPrice     = prices[0];
+  const maxPrice     = prices[prices.length - 1];
+
+  let suggested = avgSalePrice;
+  if (purchase > 0) {
+    const avgMultiplier = pool.reduce((s, r) => {
+      const cost = r.prix_achat;
+      return cost > 0 ? s + r.prix_vente / cost : s;
+    }, 0) / pool.length;
+    suggested = Math.round(purchase * avgMultiplier);
+  } else {
+    suggested = Math.round(avgSalePrice);
+  }
+
+  document.getElementById('pricing-suggested-price').textContent = fmt(suggested);
+  document.getElementById('pricing-range').textContent =
+    `Typical range: ${fmt(minPrice)} – ${fmt(maxPrice)}`;
+  document.getElementById('pricing-confidence').textContent =
+    `Based on ${pool.length} similar sale${pool.length > 1 ? 's' : ''}`;
+  document.getElementById('pricing-stats').innerHTML = `
+    <div class="pricing-stat-item">
+      <span class="pricing-stat-label">Avg sale price</span>
+      <span class="pricing-stat-value">${fmt(Math.round(avgSalePrice))}</span>
+    </div>
+    <div class="pricing-stat-item">
+      <span class="pricing-stat-label">Avg ROI</span>
+      <span class="pricing-stat-value">${avgRoi.toFixed(1)}%</span>
+    </div>
+    <div class="pricing-stat-item">
+      <span class="pricing-stat-label">Avg margin</span>
+      <span class="pricing-stat-value">${fmt(Math.round(avgMargin))}</span>
+    </div>
+    <div class="pricing-stat-item">
+      <span class="pricing-stat-label">Avg fees</span>
+      <span class="pricing-stat-value">${fmt(Math.round(avgFees))}</span>
+    </div>
+  `;
+  result.style.display = 'block';
+}
+
+// ══════════════════════════════
+//  INVENTORY TABLE
+// ══════════════════════════════
+function sortTable(key) {
+  if (sortKey === key) sortDir *= -1;
+  else { sortKey = key; sortDir = 1; }
+  renderInventory();
+}
+
+function renderInventory() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const statusFilter = document.getElementById('filter-statut').value;
+
+  let data = allData.filter(r => {
+    const match = !search || JSON.stringify(r).toLowerCase().includes(search);
+    const statusOk = !statusFilter || r.statut === statusFilter;
+    return match && statusOk;
+  });
+
+  data.sort((a, b) => {
+    let va = a[sortKey] ?? '', vb = b[sortKey] ?? '';
+    if (typeof va === 'number') return (va - vb) * sortDir;
+    return String(va).localeCompare(String(vb)) * sortDir;
+  });
+
+  document.getElementById('inventory-count').textContent = `${data.length} article${data.length!==1?'s':''}`;
+
+  const tbody = document.getElementById('inventory-body');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted)">Aucun résultat</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(r => {
+    const m = r.marge_nette || 0;
+    const mClass = m > 0 ? 'badge-green' : m < 0 ? 'badge-orange' : 'badge-gray';
+    const sClass = r.statut === 'Vendu' ? 'badge-green' : r.statut === 'En vente' ? 'badge-purple' : 'badge-gray';
+    return `<tr>
+      <td><strong>${r.marque||'—'}</strong></td>
+      <td>${r.modele||'—'}</td>
+      <td>${r.etat||'—'}</td>
+      <td>${fmt(r.prix_achat)}</td>
+      <td>${r.vente_estime ? fmt(r.vente_estime) : '—'}</td>
+      <td>${r.prix_vente ? fmt(r.prix_vente) : '—'}</td>
+      <td><span class="badge ${mClass}">${fmt(m)}</span></td>
+      <td><span class="badge ${sClass}">${r.statut||'—'}</span></td>
+      <td>${r.plateforme||'—'}</td>
+      <td>${r.date_achat||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+
+// ══════════════════════════════
+//  TEMPLATE CSV
+// ══════════════════════════════
+function downloadTemplate() {
+  const header = 'marque,modele,reference,couleur,etat,prix_achat,vente_estime,prix_vente,statut,plateforme,date_achat,date_vente,notes';
+  const ex1 = 'Chanel,Timeless,CC-001,Noir,Excellent,1200,1850,1800,Vendu,Vestiaire Collective,2024-01-10,2024-02-05,';
+  const ex2 = 'Louis Vuitton,Neverfull MM,LV-002,Monogram,Bon,750,1050,,En stock,,2024-03-01,,';
+  const csv = [header, ex1, ex2].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'template_sacs.csv';
+  a.click();
+  showToast('Template téléchargé');
+}
+
+// ══════════════════════════════
+//  TOAST
+// ══════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function updateBadge() {
+  const n = allData.filter(r => r.statut !== 'Vendu').length;
+  document.getElementById('badge-stock').textContent = n;
+}
+
+// ── REMOVED: demo seed data ──
+(function seedProfiles() {
+  // no-op — data comes from Google Sheets or file import
+  return;
+  const d = (n) => { const x = new Date(); x.setDate(x.getDate()-n); return x.toISOString().split('T')[0]; };
+  const calc = arr => arr.map(r => {
+    const pa=r.prix_achat,fr=r.frais,pv=r.prix_vente,mn=pv-pa-fr,roi=pa>0?(mn/(pa+fr)*100):0;
+    let rot=null;
+    if(r.date_achat&&r.date_vente){const a=new Date(r.date_achat),v=new Date(r.date_vente);if(!isNaN(a)&&!isNaN(v))rot=Math.round((v-a)/86400000);}
+    return{...r,marge_nette:mn,roi,rotation:rot};
+  });
+
+  // ── GT : premium segment, ~25 articles sur 12 mois ──
+  const gt = calc([
+    {marque:'Chanel',modele:'Timeless',reference:'CC-001',couleur:'Noir',etat:'Excellent',prix_achat:1200,frais:30,prix_vente:1850,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(355),date_vente:d(335),notes:''},
+    {marque:'Hermès',modele:'Evelyne',reference:'HE-002',couleur:'Camel',etat:'Excellent',prix_achat:1800,frais:25,prix_vente:2650,statut:'Vendu',plateforme:'Instagram',date_achat:d(340),date_vente:d(315),notes:''},
+    {marque:'Louis Vuitton',modele:'Neverfull MM',reference:'LV-003',couleur:'Monogram',etat:'Bon',prix_achat:750,frais:15,prix_vente:1080,statut:'Vendu',plateforme:'Vinted',date_achat:d(320),date_vente:d(298),notes:''},
+    {marque:'Chanel',modele:'Boy Bag',reference:'CC-004',couleur:'Bordeaux',etat:'Bon',prix_achat:2100,frais:40,prix_vente:3200,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(305),date_vente:d(280),notes:''},
+    {marque:'Dior',modele:'Lady Dior',reference:'DI-005',couleur:'Rose',etat:'Excellent',prix_achat:1350,frais:30,prix_vente:1950,statut:'Vendu',plateforme:'Instagram',date_achat:d(290),date_vente:d(268),notes:''},
+    {marque:'Gucci',modele:'Marmont',reference:'GU-006',couleur:'Beige',etat:'Excellent',prix_achat:680,frais:20,prix_vente:990,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(275),date_vente:d(252),notes:''},
+    {marque:'Hermès',modele:'Picotin',reference:'HE-007',couleur:'Noir',etat:'Bon',prix_achat:950,frais:20,prix_vente:1400,statut:'Vendu',plateforme:'Instagram',date_achat:d(260),date_vente:d(238),notes:''},
+    {marque:'Chanel',modele:'Wallet on Chain',reference:'CC-008',couleur:'Beige',etat:'Bon',prix_achat:950,frais:15,prix_vente:1450,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(245),date_vente:d(220),notes:''},
+    {marque:'Louis Vuitton',modele:'Speedy 30',reference:'LV-009',couleur:'Monogram',etat:'Bon',prix_achat:580,frais:10,prix_vente:820,statut:'Vendu',plateforme:'LeBonCoin',date_achat:d(230),date_vente:d(210),notes:''},
+    {marque:'Prada',modele:'Re-Edition',reference:'PR-010',couleur:'Noir',etat:'Excellent',prix_achat:520,frais:12,prix_vente:780,statut:'Vendu',plateforme:'Vinted',date_achat:d(215),date_vente:d(195),notes:''},
+    {marque:'Chanel',modele:'Timeless',reference:'CC-011',couleur:'Beige',etat:'Excellent',prix_achat:1250,frais:30,prix_vente:1900,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(200),date_vente:d(178),notes:''},
+    {marque:'Hermès',modele:'Constance',reference:'HE-012',couleur:'Marron',etat:'Bon',prix_achat:3100,frais:50,prix_vente:4500,statut:'Vendu',plateforme:'Instagram',date_achat:d(185),date_vente:d(158),notes:''},
+    {marque:'Dior',modele:'Saddle',reference:'DI-013',couleur:'Bleu',etat:'Excellent',prix_achat:1100,frais:25,prix_vente:1650,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(170),date_vente:d(148),notes:''},
+    {marque:'Louis Vuitton',modele:'Alma BB',reference:'LV-014',couleur:'Épi Rouge',etat:'Bon',prix_achat:620,frais:12,prix_vente:900,statut:'Vendu',plateforme:'Vinted',date_achat:d(155),date_vente:d(132),notes:''},
+    {marque:'Gucci',modele:'Dionysus',reference:'GU-015',couleur:'Noir',etat:'Excellent',prix_achat:920,frais:22,prix_vente:1350,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(140),date_vente:d(118),notes:''},
+    {marque:'Chanel',modele:'Boy Bag',reference:'CC-016',couleur:'Noir',etat:'Excellent',prix_achat:2200,frais:40,prix_vente:3400,statut:'Vendu',plateforme:'Instagram',date_achat:d(125),date_vente:d(100),notes:''},
+    {marque:'Hermès',modele:'Evelyne',reference:'HE-017',couleur:'Bleu',etat:'Excellent',prix_achat:1850,frais:25,prix_vente:2750,statut:'Vendu',plateforme:'Instagram',date_achat:d(110),date_vente:d(85),notes:''},
+    {marque:'Prada',modele:'Cleo',reference:'PR-018',couleur:'Blanc',etat:'Excellent',prix_achat:730,frais:18,prix_vente:1100,statut:'Vendu',plateforme:'Instagram',date_achat:d(95),date_vente:d(72),notes:''},
+    {marque:'Louis Vuitton',modele:'Neverfull GM',reference:'LV-019',couleur:'Monogram',etat:'Correct',prix_achat:680,frais:15,prix_vente:920,statut:'Vendu',plateforme:'LeBonCoin',date_achat:d(80),date_vente:d(58),notes:''},
+    {marque:'Chanel',modele:'Gabrielle',reference:'CC-020',couleur:'Noir',etat:'Bon',prix_achat:1550,frais:35,prix_vente:2300,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(65),date_vente:d(42),notes:''},
+    {marque:'Gucci',modele:'Marmont',reference:'GU-021',couleur:'Rose',etat:'Excellent',prix_achat:700,frais:20,prix_vente:1020,statut:'Vendu',plateforme:'Instagram',date_achat:d(50),date_vente:d(28),notes:''},
+    {marque:'Hermès',modele:'Picotin',reference:'HE-022',couleur:'Vert',etat:'Excellent',prix_achat:980,frais:20,prix_vente:1480,statut:'Vendu',plateforme:'Instagram',date_achat:d(35),date_vente:d(12),notes:''},
+    {marque:'Chanel',modele:'Timeless',reference:'CC-023',couleur:'Rouge',etat:'Bon',prix_achat:1300,frais:30,prix_vente:0,statut:'En vente',plateforme:'Vestiaire Collective',date_achat:d(20),date_vente:'',notes:'Prix négociable'},
+    {marque:'Dior',modele:'Lady Dior',reference:'DI-024',couleur:'Noir',etat:'Excellent',prix_achat:1420,frais:30,prix_vente:0,statut:'En vente',plateforme:'Instagram',date_achat:d(12),date_vente:'',notes:''},
+    {marque:'Louis Vuitton',modele:'Capucines',reference:'LV-025',couleur:'Camel',etat:'Excellent',prix_achat:2800,frais:45,prix_vente:0,statut:'En stock',plateforme:'',date_achat:d(5),date_vente:'',notes:'Nettoyage en cours'},
+  ]);
+
+  // ── DT : segment mid-range, volume plus élevé ──
+  const dt = calc([
+    {marque:'Balenciaga',modele:'City',reference:'BA-001',couleur:'Noir',etat:'Bon',prix_achat:480,frais:15,prix_vente:720,statut:'Vendu',plateforme:'Vinted',date_achat:d(358),date_vente:d(338),notes:''},
+    {marque:'Prada',modele:'Re-Edition',reference:'PR-002',couleur:'Beige',etat:'Correct',prix_achat:420,frais:10,prix_vente:600,statut:'Vendu',plateforme:'Vinted',date_achat:d(345),date_vente:d(322),notes:''},
+    {marque:'Gucci',modele:'Soho Disco',reference:'GU-003',couleur:'Noir',etat:'Bon',prix_achat:380,frais:12,prix_vente:560,statut:'Vendu',plateforme:'LeBonCoin',date_achat:d(332),date_vente:d(308),notes:''},
+    {marque:'Michael Kors',modele:'Selma',reference:'MK-004',couleur:'Marron',etat:'Bon',prix_achat:120,frais:8,prix_vente:195,statut:'Vendu',plateforme:'Vinted',date_achat:d(320),date_vente:d(300),notes:''},
+    {marque:'Prada',modele:'Cleo',reference:'PR-005',couleur:'Blanc',etat:'Excellent',prix_achat:720,frais:18,prix_vente:1060,statut:'Vendu',plateforme:'Instagram',date_achat:d(308),date_vente:d(285),notes:''},
+    {marque:'Balenciaga',modele:'Neo Classic',reference:'BA-006',couleur:'Gris',etat:'Bon',prix_achat:560,frais:15,prix_vente:820,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(295),date_vente:d(272),notes:''},
+    {marque:'Gucci',modele:'Dionysus',reference:'GU-007',couleur:'Blanc',etat:'Excellent',prix_achat:880,frais:20,prix_vente:1280,statut:'Vendu',plateforme:'Instagram',date_achat:d(282),date_vente:d(258),notes:''},
+    {marque:'Coach',modele:'Tabby',reference:'CO-008',couleur:'Noir',etat:'Excellent',prix_achat:180,frais:8,prix_vente:290,statut:'Vendu',plateforme:'Vinted',date_achat:d(270),date_vente:d(248),notes:''},
+    {marque:'Prada',modele:'Galleria',reference:'PR-009',couleur:'Noir',etat:'Bon',prix_achat:850,frais:20,prix_vente:1250,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(258),date_vente:d(235),notes:''},
+    {marque:'Michael Kors',modele:'Jet Set',reference:'MK-010',couleur:'Beige',etat:'Correct',prix_achat:95,frais:6,prix_vente:155,statut:'Vendu',plateforme:'LeBonCoin',date_achat:d(245),date_vente:d(225),notes:''},
+    {marque:'Balenciaga',modele:'City',reference:'BA-011',couleur:'Rouge',etat:'Excellent',prix_achat:520,frais:15,prix_vente:800,statut:'Vendu',plateforme:'Vinted',date_achat:d(232),date_vente:d(210),notes:''},
+    {marque:'Gucci',modele:'Marmont',reference:'GU-012',couleur:'Beige',etat:'Bon',prix_achat:650,frais:18,prix_vente:950,statut:'Vendu',plateforme:'Instagram',date_achat:d(220),date_vente:d(198),notes:''},
+    {marque:'Prada',modele:'Re-Edition',reference:'PR-013',couleur:'Noir',etat:'Bon',prix_achat:440,frais:10,prix_vente:640,statut:'Vendu',plateforme:'Vinted',date_achat:d(208),date_vente:d(186),notes:''},
+    {marque:'Coach',modele:'Dreamer',reference:'CO-014',couleur:'Marron',etat:'Bon',prix_achat:160,frais:8,prix_vente:260,statut:'Vendu',plateforme:'LeBonCoin',date_achat:d(195),date_vente:d(175),notes:''},
+    {marque:'Gucci',modele:'GG Marmont Mini',reference:'GU-015',couleur:'Rose',etat:'Excellent',prix_achat:580,frais:15,prix_vente:880,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(182),date_vente:d(160),notes:''},
+    {marque:'Balenciaga',modele:'Hourglass',reference:'BA-016',couleur:'Noir',etat:'Excellent',prix_achat:780,frais:20,prix_vente:1150,statut:'Vendu',plateforme:'Instagram',date_achat:d(170),date_vente:d(145),notes:''},
+    {marque:'Prada',modele:'Cleo',reference:'PR-017',couleur:'Camel',etat:'Excellent',prix_achat:740,frais:18,prix_vente:1100,statut:'Vendu',plateforme:'Instagram',date_achat:d(158),date_vente:d(132),notes:''},
+    {marque:'Michael Kors',modele:'Selma',reference:'MK-018',couleur:'Noir',etat:'Bon',prix_achat:110,frais:6,prix_vente:175,statut:'Vendu',plateforme:'Vinted',date_achat:d(145),date_vente:d(125),notes:''},
+    {marque:'Gucci',modele:'Dionysus Mini',reference:'GU-019',couleur:'Beige',etat:'Bon',prix_achat:720,frais:18,prix_vente:1050,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(132),date_vente:d(108),notes:''},
+    {marque:'Balenciaga',modele:'City',reference:'BA-020',couleur:'Blanc',etat:'Bon',prix_achat:500,frais:15,prix_vente:760,statut:'Vendu',plateforme:'Vinted',date_achat:d(120),date_vente:d(95),notes:''},
+    {marque:'Prada',modele:'Galleria',reference:'PR-021',couleur:'Bordeaux',etat:'Excellent',prix_achat:870,frais:20,prix_vente:1300,statut:'Vendu',plateforme:'Instagram',date_achat:d(108),date_vente:d(82),notes:''},
+    {marque:'Gucci',modele:'Soho Disco',reference:'GU-022',couleur:'Rose',etat:'Bon',prix_achat:360,frais:12,prix_vente:540,statut:'Vendu',plateforme:'LeBonCoin',date_achat:d(95),date_vente:d(72),notes:''},
+    {marque:'Coach',modele:'Tabby',reference:'CO-023',couleur:'Marron',etat:'Excellent',prix_achat:195,frais:8,prix_vente:315,statut:'Vendu',plateforme:'Vinted',date_achat:d(82),date_vente:d(58),notes:''},
+    {marque:'Balenciaga',modele:'Neo Classic',reference:'BA-024',couleur:'Bleu',etat:'Excellent',prix_achat:590,frais:15,prix_vente:880,statut:'Vendu',plateforme:'Vestiaire Collective',date_achat:d(68),date_vente:d(45),notes:''},
+    {marque:'Prada',modele:'Re-Edition',reference:'PR-025',couleur:'Rose',etat:'Excellent',prix_achat:460,frais:10,prix_vente:690,statut:'Vendu',plateforme:'Instagram',date_achat:d(55),date_vente:d(30),notes:''},
+    {marque:'Gucci',modele:'Marmont',reference:'GU-026',couleur:'Noir',etat:'Bon',prix_achat:670,frais:18,prix_vente:0,statut:'En vente',plateforme:'Vestiaire Collective',date_achat:d(28),date_vente:'',notes:''},
+    {marque:'Balenciaga',modele:'City',reference:'BA-027',couleur:'Vert',etat:'Bon',prix_achat:510,frais:15,prix_vente:0,statut:'En vente',plateforme:'Vinted',date_achat:d(15),date_vente:'',notes:''},
+    {marque:'Prada',modele:'Cleo',reference:'PR-028',couleur:'Noir',etat:'Excellent',prix_achat:750,frais:18,prix_vente:0,statut:'En stock',plateforme:'',date_achat:d(7),date_vente:'',notes:'Arrivée récente'},
+  ]);
+
+  localStorage.setItem('wd_data_GT', JSON.stringify(gt));
+  localStorage.setItem('wd_data_DT', JSON.stringify(dt));
+})();
+
+// ── INIT ──
+loadProfileData('GT');
+if (allData.length) { updateBadge(); computeKPIs(); renderInventory(); }
+updateGSStatus();
+startAutoSync();
+// Auto-sync on load if sheet is configured and no local data yet
+if (!allData.length && getSheetUrl('GT')) syncCurrentProfile();
+showPage('overview');
+</script>
+</body>
+</html>
