@@ -1487,10 +1487,10 @@ function ingestData(raw, name, log) {
 
   // Normalize statut to French regardless of input language
   const normStatut = s => {
-    const v = String(s||'').trim().toLowerCase();
-    if (v==='vendu'||v==='sold') return 'Vendu';
-    if (v==='en vente'||v==='for sale'||v==='à vendre') return 'En vente';
-    if (v==='en stock'||v==='in stock'||v==='stock') return 'En stock';
+    const v = String(s||'').trim().toLowerCase().replace(/[^a-z ]/g,'');
+    if (v==='vendu'||v==='sold'||v==='vend'||v==='sell'||v==='vendue') return 'Vendu';
+    if (v==='en vente'||v==='for sale'||v==='à vendre'||v==='a vendre'||v==='sale') return 'En vente';
+    if (v==='en stock'||v==='in stock'||v==='stock'||v==='instock') return 'En stock';
     return String(s||'').trim();
   };
 
@@ -1515,6 +1515,8 @@ function ingestData(raw, name, log) {
     const roi = pa > 0 ? (marge_nette / pa * 100) : 0;
 
     r.statut = normStatut(r.statut);
+    // Auto-détection : si prix_vente ET date_vente sont remplis → forcément Vendu
+    if (pv > 0 && r.date_vente && String(r.date_vente).trim() !== '') r.statut = 'Vendu';
 
     let rotation = null;
     if (r.date_achat && r.date_vente) {
